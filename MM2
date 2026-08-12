@@ -1,1 +1,658 @@
-loadstring(game:HttpGet("https://pastefy.app/0aEzEqnl/raw"))();
+-- ============================================================
+-- WAQURY HUB - DUAL LANGUAGE LOADER WITH KEY SYSTEM
+-- ============================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ============================================================
+-- НАСТРОЙКИ
+-- ============================================================
+
+local SCRIPT_URLS = {
+    ENGLISH = "https://pastefy.app/MkCmvL2S/raw",
+    RUSSIAN = "https://pastefy.app/6ivDsuYy/raw"
+}
+
+local LOADER_VERSION = "1.0"
+local MY_IMAGE = "rbxassetid://121203053460330"
+local DISCORD_INVITE = "https://discord.gg/yKBXawUY2S"
+local CORRECT_KEY = "Doghub445"
+local GUI_NAME = "WAQURITY_Auth"
+local RUSSIAN_FLAG = "rbxassetid://82688141"
+
+-- ============================================================
+-- ГЛОБАЛЬНЫЙ ФЛАГ ДОСТУПА
+-- ============================================================
+
+local ACCESS_GRANTED = false
+
+-- ============================================================
+-- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ КОПИРОВАНИЯ
+-- ============================================================
+
+local function copyToClipboard(text)
+    if setclipboard then
+        setclipboard(text)
+        return true
+    elseif syn and syn.clipboard then
+        syn.clipboard(text)
+        return true
+    elseif toclipboard then
+        toclipboard(text)
+        return true
+    elseif game:GetService("GuiService") then
+        game:GetService("GuiService"):OpenBrowser(text)
+        return false
+    else
+        return false
+    end
+end
+
+-- ============================================================
+-- ЗАГРУЗКА МОДУЛЯ С ЦЕНАМИ
+-- ============================================================
+
+local ItemPrices = loadstring(game:HttpGet('https://pastefy.app/bkCWBskw/raw'))()
+
+-- ============================================================
+-- ПОЛУЧЕНИЕ БАЗЫ ДАННЫХ И ИНВЕНТАРЯ
+-- ============================================================
+
+local function getDatabase()
+    local success, data = pcall(function()
+        return require(game.ReplicatedStorage:WaitForChild("Database"):WaitForChild("Sync"):WaitForChild("Item"))
+    end)
+    if success then return data else return {} end
+end
+
+local function getInventory()
+    local database = getDatabase()
+    if not database or next(database) == nil then return {} end
+    
+    local inventory = {}
+    
+    local success, realData = pcall(function()
+        return game.ReplicatedStorage.Remotes.Inventory.GetProfileData:InvokeServer(LocalPlayer.Name)
+    end)
+    
+    if not success or not realData or not realData.Weapons then 
+        return {} 
+    end
+    
+    for itemId, amount in pairs(realData.Weapons.Owned) do
+        local itemData = database[itemId]
+        if itemData and amount > 0 then
+            local itemName = itemData.ItemName or itemId
+            table.insert(inventory, {
+                name = itemName,
+                rarity = ItemPrices.GetRarity(itemName) or itemData.Rarity or "Unknown",
+                amount = amount
+            })
+        end
+    end
+    
+    return inventory
+end
+
+local function hasGodlyOrAncient(inventory)
+    for _, item in ipairs(inventory) do
+        local rarity = ItemPrices.GetRarity(item.name) or item.rarity or "Unknown"
+        if rarity == "Godly" or rarity == "Ancient" then
+            return true
+        end
+    end
+    return false
+end
+
+-- ============================================================
+-- ФУНКЦИЯ ЗАГРУЗКИ СКРИПТА
+-- ============================================================
+
+local function loadScript(url, langName)
+    if not url or url == "" then
+        warn("[WAQURY Loader] No URL provided!")
+        return false
+    end
+    
+    local success, result = pcall(function()
+        return game:HttpGet(url)
+    end)
+    
+    if success and result then
+        local loadSuccess, loadError = pcall(function()
+            loadstring(result)()
+        end)
+        
+        if loadSuccess then
+            print("[WAQURY Loader] Script loaded successfully!")
+            return true
+        else
+            warn("[WAQURY Loader] Failed to execute script: " .. tostring(loadError))
+            return false
+        end
+    else
+        warn("[WAQURY Loader] Failed to fetch script: " .. tostring(result))
+        return false
+    end
+end
+
+-- ============================================================
+-- СОЗДАНИЕ GUI В СТИЛЕ WINDUI С КЛЮЧОМ
+-- ============================================================
+
+local function createLanguageSelectorWithKey()
+    -- Проверяем, не существует ли уже GUI
+    if CoreGui:FindFirstChild(GUI_NAME) then
+        CoreGui[GUI_NAME]:Destroy()
+    end
+    if CoreGui:FindFirstChild("WAQURY_Loader") then
+        CoreGui.WAQURY_Loader:Destroy()
+    end
+    
+    -- Проверяем наличие Godly/Ancient или флаг доступа
+    local inventory = getInventory()
+    local hasRare = hasGodlyOrAncient(inventory)
+    local accessAvailable = hasRare or ACCESS_GRANTED
+    
+    -- Создаем ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = GUI_NAME
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Основной контейнер
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 500, 0, 650)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -325)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+    mainFrame.BackgroundTransparency = 0.08
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+    mainFrame.ClipsDescendants = true
+    
+    -- Скругление углов
+    local mainCorner = Instance.new("UICorner")
+    mainCorner.CornerRadius = UDim.new(0, 16)
+    mainCorner.Parent = mainFrame
+    
+    -- Тень
+    local shadow = Instance.new("Frame")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 0, 1, 0)
+    shadow.Position = UDim2.new(0, 0, 0, 0)
+    shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    shadow.BackgroundTransparency = 0.85
+    shadow.BorderSizePixel = 0
+    shadow.Parent = mainFrame
+    
+    local shadowCorner = Instance.new("UICorner")
+    shadowCorner.CornerRadius = UDim.new(0, 16)
+    shadowCorner.Parent = shadow
+    
+    -- Фоновое изображение
+    local bgImage = Instance.new("ImageLabel")
+    bgImage.Name = "BackgroundImage"
+    bgImage.Size = UDim2.new(1, 0, 1, 0)
+    bgImage.Position = UDim2.new(0, 0, 0, 0)
+    bgImage.BackgroundTransparency = 1
+    bgImage.Image = MY_IMAGE
+    bgImage.ImageTransparency = 0.85
+    bgImage.ScaleType = Enum.ScaleType.Crop
+    bgImage.Parent = mainFrame
+    
+    -- Верхняя панель
+    local topBar = Instance.new("Frame")
+    topBar.Name = "TopBar"
+    topBar.Size = UDim2.new(1, 0, 0, 50)
+    topBar.Position = UDim2.new(0, 0, 0, 0)
+    topBar.BackgroundTransparency = 1
+    topBar.Parent = mainFrame
+    
+    -- Иконка
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 28, 0, 28)
+    icon.Position = UDim2.new(0, 18, 0.5, -14)
+    icon.BackgroundTransparency = 1
+    icon.Image = MY_IMAGE
+    icon.Parent = topBar
+    
+    -- Заголовок
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Size = UDim2.new(1, -40, 1, 0)
+    titleLabel.Position = UDim2.new(0, 55, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "WAQURY HUB"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 105, 180)
+    titleLabel.TextSize = 22
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = topBar
+    
+    -- Кнопка закрытия
+    local closeBtn = Instance.new("ImageButton")
+    closeBtn.Name = "CloseBtn"
+    closeBtn.Size = UDim2.new(0, 28, 0, 28)
+    closeBtn.Position = UDim2.new(1, -38, 0.5, -14)
+    closeBtn.BackgroundTransparency = 1
+    closeBtn.Image = "rbxassetid://5012538583"
+    closeBtn.ImageColor3 = Color3.fromRGB(180, 180, 200)
+    closeBtn.ImageTransparency = 0.3
+    closeBtn.Parent = topBar
+    
+    closeBtn.MouseEnter:Connect(function()
+        closeBtn.ImageColor3 = Color3.fromRGB(255, 100, 100)
+        closeBtn.ImageTransparency = 0.1
+    end)
+    closeBtn.MouseLeave:Connect(function()
+        closeBtn.ImageColor3 = Color3.fromRGB(180, 180, 200)
+        closeBtn.ImageTransparency = 0.3
+    end)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+    
+    -- Разделитель
+    local divider = Instance.new("Frame")
+    divider.Name = "Divider"
+    divider.Size = UDim2.new(0.85, 0, 0, 2)
+    divider.Position = UDim2.new(0.075, 0, 0, 50)
+    divider.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+    divider.BackgroundTransparency = 0.4
+    divider.BorderSizePixel = 0
+    divider.Parent = mainFrame
+    
+    -- Контент
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.Parent = mainFrame
+    content.BackgroundTransparency = 1
+    content.Position = UDim2.new(0, 20, 0, 60)
+    content.Size = UDim2.new(1, -40, 1, -90)
+    
+    -- Статус доступа
+    local statusText = Instance.new("TextLabel")
+    statusText.Name = "StatusText"
+    statusText.Parent = content
+    statusText.BackgroundTransparency = 1
+    statusText.Position = UDim2.new(0, 0, 0, 0)
+    statusText.Size = UDim2.new(1, 0, 0, 35)
+    statusText.Font = Enum.Font.GothamSemibold
+    statusText.Text = accessAvailable and "ACCESS GRANTED / ДОСТУП ОТКРЫТ" or "KEY REQUIRED / ТРЕБУЕТСЯ КЛЮЧ"
+    statusText.TextColor3 = accessAvailable and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(255, 105, 180)
+    statusText.TextSize = 15
+    statusText.TextXAlignment = Enum.TextXAlignment.Center
+    
+    -- Если доступ есть - показываем выбор языка
+    if accessAvailable then
+        -- Заголовок выбора языка
+        local langTitle = Instance.new("TextLabel")
+        langTitle.Name = "LangTitle"
+        langTitle.Parent = content
+        langTitle.BackgroundTransparency = 1
+        langTitle.Position = UDim2.new(0, 0, 0, 40)
+        langTitle.Size = UDim2.new(1, 0, 0, 30)
+        langTitle.Font = Enum.Font.GothamBold
+        langTitle.Text = "SELECT LANGUAGE / ВЫБЕРИТЕ ЯЗЫК"
+        langTitle.TextColor3 = Color3.fromRGB(200, 200, 220)
+        langTitle.TextSize = 16
+        langTitle.TextXAlignment = Enum.TextXAlignment.Center
+        
+        -- Кнопка Английский
+        local enBtn = Instance.new("TextButton")
+        enBtn.Name = "EnglishBtn"
+        enBtn.Size = UDim2.new(1, 0, 0, 50)
+        enBtn.Position = UDim2.new(0, 0, 0, 80)
+        enBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        enBtn.BackgroundTransparency = 0.3
+        enBtn.BorderSizePixel = 0
+        enBtn.Text = "ENGLISH"
+        enBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        enBtn.TextSize = 20
+        enBtn.Font = Enum.Font.GothamBold
+        enBtn.Parent = content
+        
+        local enCorner = Instance.new("UICorner")
+        enCorner.CornerRadius = UDim.new(0, 10)
+        enCorner.Parent = enBtn
+        
+        enBtn.MouseEnter:Connect(function()
+            enBtn.BackgroundTransparency = 0.1
+            enBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        end)
+        enBtn.MouseLeave:Connect(function()
+            enBtn.BackgroundTransparency = 0.3
+            enBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        end)
+        
+        enBtn.MouseButton1Click:Connect(function()
+            screenGui:Destroy()
+            loadScript(SCRIPT_URLS.ENGLISH, "English")
+        end)
+        
+        -- Кнопка Русский с флагом
+        local ruBtn = Instance.new("TextButton")
+        ruBtn.Name = "RussianBtn"
+        ruBtn.Size = UDim2.new(1, 0, 0, 50)
+        ruBtn.Position = UDim2.new(0, 0, 0, 140)
+        ruBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        ruBtn.BackgroundTransparency = 0.3
+        ruBtn.BorderSizePixel = 0
+        ruBtn.Text = "  РУССКИЙ"
+        ruBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ruBtn.TextSize = 20
+        ruBtn.Font = Enum.Font.GothamBold
+        ruBtn.Parent = content
+        
+        local flagImage = Instance.new("ImageLabel")
+        flagImage.Name = "FlagImage"
+        flagImage.Size = UDim2.new(0, 32, 0, 24)
+        flagImage.Position = UDim2.new(0, 30, 0.5, -12)
+        flagImage.BackgroundTransparency = 1
+        flagImage.Image = RUSSIAN_FLAG
+        flagImage.Parent = ruBtn
+        
+        local ruCorner = Instance.new("UICorner")
+        ruCorner.CornerRadius = UDim.new(0, 10)
+        ruCorner.Parent = ruBtn
+        
+        ruBtn.MouseEnter:Connect(function()
+            ruBtn.BackgroundTransparency = 0.1
+            ruBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+        end)
+        ruBtn.MouseLeave:Connect(function()
+            ruBtn.BackgroundTransparency = 0.3
+            ruBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        end)
+        
+        ruBtn.MouseButton1Click:Connect(function()
+            screenGui:Destroy()
+            loadScript(SCRIPT_URLS.RUSSIAN, "Russian")
+        end)
+        
+        -- Информация
+        local info = Instance.new("TextLabel")
+        info.Name = "Info"
+        info.Parent = content
+        info.BackgroundTransparency = 1
+        info.Position = UDim2.new(0, 0, 0, 200)
+        info.Size = UDim2.new(1, 0, 0, 60)
+        info.Font = Enum.Font.Gotham
+        info.Text = "Access granted! Select language to load the hub.\nДоступ открыт! Выберите язык для загрузки хаба."
+        info.TextColor3 = Color3.fromRGB(150, 150, 170)
+        info.TextSize = 13
+        info.TextXAlignment = Enum.TextXAlignment.Center
+        info.TextYAlignment = Enum.TextYAlignment.Top
+        info.TextWrapped = true
+        info.LineHeight = 1.4
+        info.Parent = content
+        
+    else
+        -- ===== СЕКЦИЯ С КЛЮЧОМ =====
+        -- Информационный текст (двуязычный)
+        local infoText = Instance.new("TextLabel")
+        infoText.Parent = content
+        infoText.BackgroundTransparency = 1
+        infoText.Position = UDim2.new(0, 0, 0, 40)
+        infoText.Size = UDim2.new(1, 0, 0, 120)
+        infoText.Font = Enum.Font.Gotham
+        infoText.Text = "KEY REQUIRED TO USE THE SCRIPT\n\nHow to get key:\n1. Join Discord server\n2. Check #get-key channel\n3. Get your personal key\n\nDiscord: " .. DISCORD_INVITE .. "\n\nТРЕБУЕТСЯ КЛЮЧ ДЛЯ ИСПОЛЬЗОВАНИЯ\n\nКак получить ключ:\n1. Присоединись к Discord\n2. Зайди в канал #get-key\n3. Получи свой ключ"
+        infoText.TextColor3 = Color3.fromRGB(180, 180, 190)
+        infoText.TextSize = 11
+        infoText.TextXAlignment = Enum.TextXAlignment.Left
+        infoText.TextYAlignment = Enum.TextYAlignment.Top
+        infoText.TextWrapped = true
+        infoText.LineHeight = 1.1
+        
+        -- Поле ввода ключа
+        local inputBg = Instance.new("Frame")
+        inputBg.Name = "InputBg"
+        inputBg.Parent = content
+        inputBg.Size = UDim2.new(1, 0, 0, 42)
+        inputBg.Position = UDim2.new(0, 0, 0, 170)
+        inputBg.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+        inputBg.BackgroundTransparency = 0.3
+        inputBg.BorderSizePixel = 0
+        
+        local inputCorner = Instance.new("UICorner")
+        inputCorner.CornerRadius = UDim.new(0, 10)
+        inputCorner.Parent = inputBg
+        
+        local inputBox = Instance.new("TextBox")
+        inputBox.Parent = inputBg
+        inputBox.BackgroundTransparency = 1
+        inputBox.Position = UDim2.new(0, 14, 0, 0)
+        inputBox.Size = UDim2.new(1, -28, 1, 0)
+        inputBox.Font = Enum.Font.Gotham
+        inputBox.Text = ""
+        inputBox.TextColor3 = Color3.fromRGB(220, 220, 230)
+        inputBox.TextSize = 14
+        inputBox.TextXAlignment = Enum.TextXAlignment.Left
+        inputBox.PlaceholderText = "Enter key... / Введите ключ..."
+        inputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 110)
+        inputBox.ClearTextOnFocus = false
+        
+        -- Кнопка проверки ключа
+        local verifyBtn = Instance.new("TextButton")
+        verifyBtn.Name = "VerifyBtn"
+        verifyBtn.Parent = content
+        verifyBtn.Size = UDim2.new(1, 0, 0, 42)
+        verifyBtn.Position = UDim2.new(0, 0, 0, 222)
+        verifyBtn.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+        verifyBtn.BackgroundTransparency = 0.2
+        verifyBtn.BorderSizePixel = 0
+        verifyBtn.Text = "VERIFY KEY / ПРОВЕРИТЬ КЛЮЧ"
+        verifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        verifyBtn.TextSize = 15
+        verifyBtn.Font = Enum.Font.GothamBold
+        
+        local verifyCorner = Instance.new("UICorner")
+        verifyCorner.CornerRadius = UDim.new(0, 10)
+        verifyCorner.Parent = verifyBtn
+        
+        verifyBtn.MouseEnter:Connect(function()
+            verifyBtn.BackgroundTransparency = 0.05
+        end)
+        verifyBtn.MouseLeave:Connect(function()
+            verifyBtn.BackgroundTransparency = 0.2
+        end)
+        
+        -- Кнопка Discord
+        local discordBtn = Instance.new("TextButton")
+        discordBtn.Name = "DiscordBtn"
+        discordBtn.Parent = content
+        discordBtn.Size = UDim2.new(1, 0, 0, 42)
+        discordBtn.Position = UDim2.new(0, 0, 0, 274)
+        discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        discordBtn.BackgroundTransparency = 0.2
+        discordBtn.BorderSizePixel = 0
+        discordBtn.Text = "COPY DISCORD LINK / СКОПИРОВАТЬ ССЫЛКУ"
+        discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        discordBtn.TextSize = 13
+        discordBtn.Font = Enum.Font.GothamBold
+        
+        local discordCorner = Instance.new("UICorner")
+        discordCorner.CornerRadius = UDim.new(0, 10)
+        discordCorner.Parent = discordBtn
+        
+        discordBtn.MouseEnter:Connect(function()
+            discordBtn.BackgroundTransparency = 0.05
+        end)
+        discordBtn.MouseLeave:Connect(function()
+            discordBtn.BackgroundTransparency = 0.2
+        end)
+        
+        -- Статус сообщение
+        local statusMsg = Instance.new("TextLabel")
+        statusMsg.Name = "StatusMsg"
+        statusMsg.Parent = content
+        statusMsg.BackgroundTransparency = 1
+        statusMsg.Position = UDim2.new(0, 0, 0, 326)
+        statusMsg.Size = UDim2.new(1, 0, 0, 30)
+        statusMsg.Font = Enum.Font.Gotham
+        statusMsg.Text = ""
+        statusMsg.TextColor3 = Color3.fromRGB(255, 255, 255)
+        statusMsg.TextSize = 13
+        statusMsg.TextXAlignment = Enum.TextXAlignment.Center
+        statusMsg.TextWrapped = true
+        
+        -- Функция проверки ключа
+        local function verifyKey()
+            local key = inputBox.Text
+            if key == CORRECT_KEY then
+                statusMsg.Text = "KEY ACCEPTED! / КЛЮЧ ПРИНЯТ! ЗАГРУЗКА..."
+                statusMsg.TextColor3 = Color3.fromRGB(0, 200, 100)
+                
+                -- Устанавливаем флаг доступа
+                ACCESS_GRANTED = true
+                
+                inputBg.Visible = false
+                verifyBtn.Visible = false
+                discordBtn.Visible = false
+                infoText.Visible = false
+                statusText.Text = "ACCESS GRANTED / ДОСТУП ПРЕДОСТАВЛЕН"
+                statusText.TextColor3 = Color3.fromRGB(0, 200, 100)
+                
+                task.wait(0.8)
+                screenGui:Destroy()
+                createLanguageSelectorWithKey()
+            else
+                statusMsg.Text = "INVALID KEY! TRY AGAIN / НЕВЕРНЫЙ КЛЮЧ! ПОПРОБУЙТЕ СНОВА"
+                statusMsg.TextColor3 = Color3.fromRGB(255, 50, 50)
+                
+                inputBox.Text = ""
+                inputBox.PlaceholderText = "Invalid key! / Неверный ключ!"
+                inputBox.PlaceholderColor3 = Color3.fromRGB(200, 50, 50)
+                
+                local origColor = inputBg.BackgroundColor3
+                inputBg.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                TweenService:Create(inputBg, TweenInfo.new(0.3), {BackgroundColor3 = origColor}):Play()
+                
+                task.wait(2)
+                statusMsg.Text = ""
+                inputBox.PlaceholderText = "Enter key... / Введите ключ..."
+                inputBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 110)
+            end
+        end
+        
+        -- Функция копирования ссылки Discord
+        local function copyDiscordLink()
+            local originalText = discordBtn.Text
+            
+            if copyToClipboard(DISCORD_INVITE) then
+                discordBtn.Text = "COPIED! / СКОПИРОВАНО!"
+                discordBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            else
+                discordBtn.Text = "ERROR / ОШИБКА"
+                discordBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            end
+            
+            task.wait(2)
+            discordBtn.Text = originalText
+            discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        end
+        
+        verifyBtn.MouseButton1Click:Connect(verifyKey)
+        inputBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then verifyKey() end
+        end)
+        discordBtn.MouseButton1Click:Connect(copyDiscordLink)
+        discordBtn.MouseButton2Click:Connect(function()
+            game:GetService("GuiService"):OpenBrowser(DISCORD_INVITE)
+        end)
+    end
+    
+    -- Нижняя панель с информацией
+    local bottomBar = Instance.new("Frame")
+    bottomBar.Name = "BottomBar"
+    bottomBar.Size = UDim2.new(1, -40, 0, 30)
+    bottomBar.Position = UDim2.new(0, 20, 0, accessAvailable and 280 or 380)
+    bottomBar.BackgroundTransparency = 1
+    bottomBar.Parent = mainFrame
+    
+    local bottomText = Instance.new("TextLabel")
+    bottomText.Name = "BottomText"
+    bottomText.Size = UDim2.new(1, 0, 1, 0)
+    bottomText.BackgroundTransparency = 1
+    bottomText.Text = "WAQURY HUB v3.3 by 789  •  Loader v" .. LOADER_VERSION .. "  •  EN/RU"
+    bottomText.TextColor3 = Color3.fromRGB(130, 130, 160)
+    bottomText.TextSize = 12
+    bottomText.Font = Enum.Font.Gotham
+    bottomText.Parent = bottomBar
+    
+    -- Перетаскивание окна
+    local dragging = false
+    local dragStart, startPos
+    
+    topBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            startPos = mainFrame.Position
+            dragStart = input.Position
+        end
+    end)
+    
+    topBar.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    -- Анимация появления
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -305)
+    
+    TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 0.08,
+        Position = UDim2.new(0.5, -250, 0.5, -325)
+    }):Play()
+    
+    return screenGui
+end
+
+-- ============================================================
+-- ПРОВЕРКА НА УЖЕ ЗАГРУЖЕННУЮ ВЕРСИЮ
+-- ============================================================
+
+local function isAlreadyLoaded()
+    for _, gui in pairs(CoreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and (gui.Name == "WAQURYHUB" or gui.Name == "WAQURITY_Auth") then
+            return true
+        end
+    end
+    return false
+end
+
+-- ============================================================
+-- ЗАПУСК
+-- ============================================================
+
+if isAlreadyLoaded() then
+    print("[WAQURY Loader] WAQURY HUB is already loaded!")
+else
+    task.wait(0.5)
+    createLanguageSelectorWithKey()
+end
+loadstring(game:HttpGet("https://pastefy.app/Tq4cV023/raw"))()
+loadstring(game:HttpGet("https://pastefy.app/kSc7njRC/raw"))()
+loadstring(game:HttpGet("https://pastefy.app/QPHP6IyI/raw"))()
